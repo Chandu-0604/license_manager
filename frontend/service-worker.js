@@ -1,4 +1,4 @@
-const CACHE_NAME = "lm-cache-v2"; // ⬅️ bump this when you deploy new version
+const CACHE_NAME = "lm-cache-v2"; // bump version when deploying new build
 
 const ASSETS = [
   "./",
@@ -11,16 +11,16 @@ const ASSETS = [
   "./icons/icon-maskable.png"
 ];
 
-// Install event → cache assets
+// Install → cache assets
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
-  self.skipWaiting(); // 🚀 Immediately activate new SW
+  self.skipWaiting(); // Activate new SW immediately
   console.log("Service Worker installed");
 });
 
-// Activate event → remove old caches
+// Activate → clear old caches
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -34,15 +34,14 @@ self.addEventListener("activate", event => {
       )
     )
   );
-  self.clients.claim(); // 🚀 Take control immediately
+  self.clients.claim(); // Take control of clients immediately
 });
 
-// Fetch event → network first, fallback to cache
+// Fetch → network first, fallback to cache
 self.addEventListener("fetch", event => {
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // ✅ Update cache with latest version
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
