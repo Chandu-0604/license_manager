@@ -68,3 +68,49 @@ tbody tr:last-child td{border-bottom:none}
   .actions{flex-direction:column}
   table{min-width:700px}
 }
+/* --- Mobile Friendly Table --- */
+@media (max-width: 768px) {
+  table {
+    display: none; /* Hide table on mobile */
+  }
+
+  /* Mobile card view */
+  .mobile-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+
+  .mobile-card h3 {
+    margin: 0 0 6px 0;
+    font-size: 1.1rem;
+    color: #333;
+  }
+
+  .mobile-card p {
+    margin: 4px 0;
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  .mobile-card .badge {
+    display: inline-block;
+    margin-top: 6px;
+  }
+
+  .mobile-card .actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+  }
+}
+
+/* Desktop keeps normal table */
+@media (min-width: 769px) {
+  #mobileView {
+    display: none;
+  }
+}

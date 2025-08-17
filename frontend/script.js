@@ -74,7 +74,8 @@ function matchQuery(row, q){
 }
 
 /***** RENDER *****/
-function render(rows){
+function render(rows) {
+  // Desktop table
   tableBody.innerHTML = "";
   rows.forEach((r, i) => {
     const st = buildStatus(r.valid_to);
@@ -98,8 +99,33 @@ function render(rows){
     `;
     tableBody.appendChild(tr);
   });
+
+  // Mobile cards
+  const mobileView = document.getElementById("mobileView");
+  mobileView.innerHTML = "";
+  rows.forEach((r) => {
+    const st = buildStatus(r.valid_to);
+    const card = document.createElement("div");
+    card.className = "mobile-card";
+    card.innerHTML = `
+      <h3>${r.name || "No Name"}</h3>
+      <p><b>Designation:</b> ${r.designation || ""}</p>
+      <p><b>License No:</b> ${r.license_no || ""}</p>
+      <p><b>Token No:</b> ${r.token_no || ""}</p>
+      <p><b>Issue:</b> ${r.issue_date || ""}</p>
+      <p><b>Valid:</b> ${r.valid_from || ""} → ${r.valid_to || ""}</p>
+      <span class="badge ${st.cls}">${st.text}</span>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="onEdit(${r.id})">Edit</button>
+        <button class="btn btn-danger" onclick="onDelete(${r.id})">Delete</button>
+      </div>
+    `;
+    mobileView.appendChild(card);
+  });
+
   countText.textContent = `${rows.length} record${rows.length!==1?"s":""}`;
 }
+
 
 /***** DATA OPS (Supabase) *****/
 async function loadAll(){
