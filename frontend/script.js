@@ -328,6 +328,25 @@ exportBtn.addEventListener("click", () => {
   XLSX.utils.book_append_sheet(wb, ws, "Licenses");
   XLSX.writeFile(wb, "licenses.xlsx");
 });
+/***** SERVICE WORKER UPDATE HANDLER *****/
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js")
+    .then(reg => {
+      console.log("✅ SW registered", reg);
+
+      // Listen for new updates
+      reg.onupdatefound = () => {
+        const newWorker = reg.installing;
+        newWorker.onstatechange = () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            // 🔔 New update ready
+            showToast("⚡ New version available. Refresh to update.");
+          }
+        };
+      };
+    })
+    .catch(err => console.error("SW registration failed:", err));
+}
 
 /***** INIT *****/
 window.onEdit = onEdit;
