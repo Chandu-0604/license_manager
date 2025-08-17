@@ -280,6 +280,29 @@ searchBtn.addEventListener("click", applySearchAndFilter);
 searchInput.addEventListener("keydown", (e) => { if(e.key==="Enter") applySearchAndFilter(); });
 filterSelect.addEventListener("change", applySearchAndFilter);
 
+// ✅ NEW: Clear button resets everything
+clearBtn.addEventListener("click", () => {
+  searchInput.value = "";
+  filterSelect.value = "all";
+  filteredRows = DATA;
+  currentPage = 1;
+  render(filteredRows);
+});
+/***** SCROLL TO TOP BUTTON *****/
+const scrollTopBtn = document.getElementById("scrollTopBtn");
+
+window.addEventListener("scroll", () => {
+  if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+    scrollTopBtn.classList.add("show");
+  } else {
+    scrollTopBtn.classList.remove("show");
+  }
+});
+
+scrollTopBtn.addEventListener("click", () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
 /***** EXPORT *****/
 exportBtn.addEventListener("click", () => {
   const rows = filteredRows.map((r, idx) => {

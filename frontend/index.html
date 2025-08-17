@@ -44,6 +44,7 @@
           <option value="expired">Expired</option>
         </select>
         <button id="searchBtn" class="btn btn-primary">Search</button>
+        <button id="clearBtn" class="btn btn-light">Clear</button>
       </div>
 
       <div class="table-wrap">
@@ -120,6 +121,7 @@
       </form>
     </div>
   </div>
+  <button id="scrollTopBtn" class="scroll-top">⬆</button>
  <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js")
@@ -127,6 +129,7 @@ if ("serviceWorker" in navigator) {
     .catch(err => console.error("Service Worker failed:", err));
 }
 </script>
+
 
 
 </body>
