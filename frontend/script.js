@@ -2,7 +2,6 @@
 const SUPABASE_URL = "https://zyrgcinblulzbuizwfmt.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5cmdjaW5ibHVsemJ1aXp3Zm10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MDQ3NTcsImV4cCI6MjA3MDk4MDc1N30.j1KRoLUaPk0n_q0vOwisXSOY2nH1JDkiK27uKvt2ww8";
 
-// Supabase client (global name is `supabase` from the CDN)
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /***** DOM *****/
@@ -23,6 +22,9 @@ const filterSelect= document.getElementById("filterSelect");
 /***** STATE *****/
 let DATA = [];
 let editingId = null;
+let currentPage = 1;
+const rowsPerPage = 10;
+let filteredRows = []; // ✅ Keep filtered set separate
 
 /***** UTILITIES *****/
 function showToast(msg){
@@ -31,14 +33,12 @@ function showToast(msg){
   setTimeout(()=> toast.classList.remove("show"), 2500);
 }
 
-// Convert "YYYY-MM-DD" to local Date at midnight
 function dateOnly(str){
   if(!str) return null;
   const [y,m,d] = str.split("-").map(Number);
   return new Date(y, m-1, d);
 }
 
-// Status text + color, with your rule: today counts as Expired (today), red
 function buildStatus(validToStr){
   const today = new Date();
   const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -53,11 +53,9 @@ function buildStatus(validToStr){
     return { text: `Expired (${days} day${days!==1?"s":""} ago)`, cls: "red" };
   }
   if(diff === 0){
-    // ✅ Now shows "Valid (expires today)" in yellow
     return { text: "Valid (expires today)", cls: "yellow" };
   }
 
-  // future
   const months = Math.floor(diff / 30);
   const days = diff % 30;
   const soon = diff <= 7;
@@ -67,7 +65,6 @@ function buildStatus(validToStr){
   return { text: label, cls: soon ? "yellow" : "green" };
 }
 
-
 function matchQuery(row, q){
   const hay = `${row.name||""} ${row.designation||""} ${row.license_no||""} ${row.token_no||""}`.toLowerCase();
   return hay.includes(q.toLowerCase());
@@ -75,13 +72,17 @@ function matchQuery(row, q){
 
 /***** RENDER *****/
 function render(rows) {
-  // Desktop table
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageRows = rows.slice(start, end);
+
+  // Desktop
   tableBody.innerHTML = "";
-  rows.forEach((r, i) => {
+  pageRows.forEach((r, i) => {
     const st = buildStatus(r.valid_to);
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${i+1}</td>
+      <td>${start + i + 1}</td>
       <td>${r.name||""}</td>
       <td>${r.designation||""}</td>
       <td>${r.license_no||""}</td>
@@ -100,10 +101,10 @@ function render(rows) {
     tableBody.appendChild(tr);
   });
 
-  // Mobile cards
+  // Mobile
   const mobileView = document.getElementById("mobileView");
   mobileView.innerHTML = "";
-  rows.forEach((r) => {
+  pageRows.forEach((r) => {
     const st = buildStatus(r.valid_to);
     const card = document.createElement("div");
     card.className = "mobile-card";
@@ -124,22 +125,45 @@ function render(rows) {
   });
 
   countText.textContent = `${rows.length} record${rows.length!==1?"s":""}`;
+  renderPagination(rows.length);
 }
 
+function renderPagination(totalRows) {
+  const pagination = document.getElementById("pagination");
+  pagination.innerHTML = "";
+  const totalPages = Math.ceil(totalRows / rowsPerPage);
+  if (totalPages <= 1) return;
 
-/***** DATA OPS (Supabase) *****/
+  const prevBtn = document.createElement("button");
+  prevBtn.textContent = "Prev";
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.onclick = () => { currentPage--; render(filteredRows); };
+  pagination.appendChild(prevBtn);
+
+  for (let p = 1; p <= totalPages; p++) {
+    const btn = document.createElement("button");
+    btn.textContent = p;
+    if (p === currentPage) btn.classList.add("active");
+    btn.onclick = () => { currentPage = p; render(filteredRows); };
+    pagination.appendChild(btn);
+  }
+
+  const nextBtn = document.createElement("button");
+  nextBtn.textContent = "Next";
+  nextBtn.disabled = currentPage === totalPages;
+  nextBtn.onclick = () => { currentPage++; render(filteredRows); };
+  pagination.appendChild(nextBtn);
+}
+
+/***** DATA OPS *****/
 async function loadAll(){
   const { data, error } = await sb.from("licenses").select("*").order("id", { ascending: true });
-  if(error){
-    console.error(error);
-    showToast("Failed to load records");
-    return;
-  }
+  if(error){ console.error(error); showToast("Failed to load records"); return; }
   DATA = data || [];
-  render(DATA);
+  filteredRows = DATA; // ✅ reset filter
+  render(filteredRows);
 }
 
-// friendly duplicate check for license_no OR token_no
 async function existsDuplicate(licenseNo, tokenNo, ignoreId=null){
   let query = sb.from("licenses").select("id").or(`license_no.eq.${licenseNo},token_no.eq.${tokenNo}`);
   const { data, error } = await query;
@@ -152,9 +176,8 @@ async function existsDuplicate(licenseNo, tokenNo, ignoreId=null){
 }
 
 async function saveRecord(payload){
-  // duplicate guard
   if(await existsDuplicate(payload.license_no, payload.token_no, editingId)){
-    showToast("⚠️ A record with this License No or Token No already exists.");
+    showToast("⚠️ Duplicate License No or Token No.");
     return;
   }
 
@@ -232,7 +255,6 @@ function applySearchAndFilter(){
     rows = rows.filter(r => matchQuery(r, q));
   }
 
-  // Today at local midnight
   const now = new Date();
   const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -249,16 +271,18 @@ function applySearchAndFilter(){
     });
   }
 
-  render(rows);
+  filteredRows = rows; // ✅ keep latest filtered data
+  currentPage = 1;
+  render(filteredRows);
 }
 
 searchBtn.addEventListener("click", applySearchAndFilter);
 searchInput.addEventListener("keydown", (e) => { if(e.key==="Enter") applySearchAndFilter(); });
 filterSelect.addEventListener("change", applySearchAndFilter);
 
-/***** EXPORT EXCEL *****/
+/***** EXPORT *****/
 exportBtn.addEventListener("click", () => {
-  const rows = DATA.map((r, idx) => {
+  const rows = filteredRows.map((r, idx) => {
     const s = buildStatus(r.valid_to);
     return {
       Sl: idx + 1,
@@ -285,5 +309,4 @@ exportBtn.addEventListener("click", () => {
 /***** INIT *****/
 window.onEdit = onEdit;
 window.onDelete = onDelete;
-
 loadAll();
