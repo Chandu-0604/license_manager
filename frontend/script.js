@@ -18,6 +18,7 @@ const cancelBtn   = document.getElementById("cancelBtn");
 const searchInput = document.getElementById("searchInput");
 const searchBtn   = document.getElementById("searchBtn");
 const filterSelect= document.getElementById("filterSelect");
+const clearBtn    = document.getElementById("clearBtn");
 
 /***** STATE *****/
 let DATA = [];
@@ -35,8 +36,21 @@ function showToast(msg){
 
 function dateOnly(str){
   if(!str) return null;
-  const [y,m,d] = str.split("-").map(Number);
-  return new Date(y, m-1, d);
+  const parts = str.split("-");
+  if (parts.length !== 3) return null;
+  const [y,m,d] = parts.map(Number);
+  const dt = new Date(y, (m||1)-1, d||1);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+// ✅ Consistent sorter: earliest valid_to first; nulls go last
+function compareByValidTo(a, b){
+  const da = dateOnly(a.valid_to);
+  const db = dateOnly(b.valid_to);
+  if (!da && !db) return 0;
+  if (!da) return 1;   // a goes after b
+  if (!db) return -1;  // a goes before b
+  return da - db;
 }
 
 function buildStatus(validToStr){
@@ -160,7 +174,10 @@ async function loadAll(){
   const { data, error } = await sb.from("licenses").select("*").order("id", { ascending: true });
   if(error){ console.error(error); showToast("Failed to load records"); return; }
   DATA = data || [];
-  filteredRows = DATA; // ✅ reset filter
+
+  // ✅ default view: sorted by earliest valid_to
+  filteredRows = [...DATA].sort(compareByValidTo);
+  currentPage = 1;
   render(filteredRows);
 }
 
@@ -250,11 +267,15 @@ function applySearchAndFilter(){
   const q = (searchInput.value || "").trim().toLowerCase();
   const filter = filterSelect.value;
 
-  let rows = DATA;
+  // Start from full DATA
+  let rows = [...DATA];
+
+  // Search
   if(q){
     rows = rows.filter(r => matchQuery(r, q));
   }
 
+  // Date-based filters
   const now = new Date();
   const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -263,15 +284,21 @@ function applySearchAndFilter(){
       const d = r.valid_to ? dateOnly(r.valid_to) : null;
       if(!d) return false;
       const diff = Math.round((d - todayOnly)/(24*60*60*1000));
+
       if(filter === "expired") return diff < 0;
       if(filter === "today")   return diff === 0;
       if(filter === "soon")    return diff > 0 && diff <= 7;
-      if(filter === "active")  return diff > 7;
+      if(filter === "1month")  return diff > 0 && diff <= 30;
+      if(filter === "2months") return diff > 0 && diff <= 60;
+      if(filter === "active")  return diff > 60;
       return true;
     });
   }
 
-  filteredRows = rows; // ✅ keep latest filtered data
+  // ✅ Always sort by earliest expiry first
+  rows.sort(compareByValidTo);
+
+  filteredRows = rows;
   currentPage = 1;
   render(filteredRows);
 }
@@ -280,14 +307,15 @@ searchBtn.addEventListener("click", applySearchAndFilter);
 searchInput.addEventListener("keydown", (e) => { if(e.key==="Enter") applySearchAndFilter(); });
 filterSelect.addEventListener("change", applySearchAndFilter);
 
-// ✅ NEW: Clear button resets everything
+// ✅ Clear → reset search & filter and show sorted list
 clearBtn.addEventListener("click", () => {
   searchInput.value = "";
   filterSelect.value = "all";
-  filteredRows = DATA;
+  filteredRows = [...DATA].sort(compareByValidTo);
   currentPage = 1;
   render(filteredRows);
 });
+
 /***** SCROLL TO TOP BUTTON *****/
 const scrollTopBtn = document.getElementById("scrollTopBtn");
 
@@ -304,8 +332,12 @@ scrollTopBtn.addEventListener("click", () => {
 });
 
 /***** EXPORT *****/
+// ✅ Export the SAME sorted/filtered view (earliest expiry first)
 exportBtn.addEventListener("click", () => {
-  const rows = filteredRows.map((r, idx) => {
+  // Sort the current filteredRows again to guarantee order
+  const rowsForExport = [...filteredRows].sort(compareByValidTo);
+
+  const rows = rowsForExport.map((r, idx) => {
     const s = buildStatus(r.valid_to);
     return {
       Sl: idx + 1,
@@ -319,6 +351,7 @@ exportBtn.addEventListener("click", () => {
       Status: s.text
     };
   });
+
   if (typeof XLSX === "undefined"){
     showToast("XLSX not available");
     return;
@@ -328,6 +361,7 @@ exportBtn.addEventListener("click", () => {
   XLSX.utils.book_append_sheet(wb, ws, "Licenses");
   XLSX.writeFile(wb, "licenses.xlsx");
 });
+
 /***** SERVICE WORKER UPDATE HANDLER *****/
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js")
