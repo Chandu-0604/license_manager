@@ -332,34 +332,115 @@ scrollTopBtn.addEventListener("click", () => {
 });
 
 /***** EXPORT *****/
-// ✅ Export the SAME sorted/filtered view (earliest expiry first)
+// Excel Export (sorted + auto column widths)
 exportBtn.addEventListener("click", () => {
-  // Sort the current filteredRows again to guarantee order
   const rowsForExport = [...filteredRows].sort(compareByValidTo);
 
-  const rows = rowsForExport.map((r, idx) => {
-    const s = buildStatus(r.valid_to);
-    return {
-      Sl: idx + 1,
-      Name: r.name,
-      Designation: r.designation,
-      "Token No": r.token_no,
-      "License No": r.license_no,
-      "Issue Date": r.issue_date,
-      "Validity From": r.valid_from,
-      "Validity To": r.valid_to,
-      Status: s.text
-    };
+  const headers = [
+    "Sl","Name","Designation","License No","Token No",
+    "Issue Date","Validity From","Validity To","Status"
+  ];
+
+  const data = [
+    headers,
+    ...rowsForExport.map((r, idx) => [
+      idx+1,
+      r.name || "",
+      r.designation || "",
+      r.license_no || "",
+      r.token_no || "",
+      r.issue_date || "",
+      r.valid_from || "",
+      r.valid_to || "",
+      buildStatus(r.valid_to).text
+    ])
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // ✅ Auto column widths
+  ws['!cols'] = headers.map((h, i) => {
+    // find max length in each column
+    const colData = data.map(row => (row[i] ? row[i].toString() : ""));
+    const maxLen = Math.max(...colData.map(v => v.length), h.length);
+    return { wch: maxLen + 2 }; // add padding
   });
 
-  if (typeof XLSX === "undefined"){
-    showToast("XLSX not available");
-    return;
-  }
-  const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Licenses");
+
   XLSX.writeFile(wb, "licenses.xlsx");
+});
+
+
+// PDF Export
+exportPdfBtn.addEventListener("click", () => {
+  if (typeof pdfMake === "undefined") {
+    showToast("PDF library not loaded");
+    return;
+  }
+
+  const rowsForExport = [...filteredRows].sort(compareByValidTo);
+
+  const headers = [
+    "Sl","Name","Designation","License No","Token No",
+    "Issue Date","Validity From","Validity To","Status"
+  ];
+
+  const body = [
+    headers.map(h => ({
+      text: h,
+      bold: true,
+      alignment: "center",
+      fillColor: "#f3f4f6" // light gray header bg
+    }))
+  ];
+
+  rowsForExport.forEach((r, idx) => {
+    body.push([
+      { text: idx+1, alignment: "center" },
+      { text: r.name || "", alignment: "left", noWrap: true },
+      { text: r.designation || "", alignment: "left", noWrap: true },
+      { text: r.license_no || "", alignment: "center", noWrap: true },
+      { text: r.token_no || "", alignment: "center", noWrap: true },
+      { text: r.issue_date || "", alignment: "center", noWrap: true },
+      { text: r.valid_from || "", alignment: "center", noWrap: true },
+      { text: r.valid_to || "", alignment: "center", noWrap: true },
+      { text: buildStatus(r.valid_to).text, alignment: "center", noWrap: true }
+    ]);
+  });
+
+  const docDefinition = {
+    pageOrientation: "landscape",
+    content: [
+      { text: "Licenses Report", style: "header", alignment: "center", margin: [0,0,0,10] },
+      {
+        table: {
+          headerRows: 1,
+          widths: [20, 110, 80, 90, 60, 70, 70, 70, 100], // fixed widths
+          body
+        },
+        layout: {
+          fillColor: function (rowIndex) {
+            return rowIndex === 0 ? "#f3f4f6" : null;
+          },
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => "#ccc",
+          vLineColor: () => "#ccc"
+        }
+      }
+    ],
+    styles: {
+      header: { fontSize: 16, bold: true }
+    },
+    defaultStyle: {
+      font: "Roboto",   // built-in pdfmake font (avoids Times error)
+      fontSize: 9
+    }
+  };
+
+  pdfMake.createPdf(docDefinition).download("licenses.pdf");
 });
 
 /***** SERVICE WORKER UPDATE HANDLER *****/

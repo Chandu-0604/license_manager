@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>License Manager</title>
     <link rel="stylesheet" href="style.css" />
-    <!-- SheetJS for Excel export -->
-    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+   <!-- SheetJS for Excel export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>  
+<!-- pdfmake for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <!-- Supabase (browser UMD) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="script.js"></script>
@@ -22,6 +25,7 @@
         <div class="top-actions">
           <button id="addBtn" class="btn btn-light">+ Add Record</button>
           <button id="exportBtn" class="btn btn-success">Export Excel</button>
+          <button id="exportPdfBtn" class="btn btn-danger">Export PDF</button>
         </div>
       </div>
     </header>
