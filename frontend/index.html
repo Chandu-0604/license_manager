@@ -1,143 +1,164 @@
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>License Manager</title>
-    <link rel="stylesheet" href="style.css" />
-   <!-- SheetJS for Excel export -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>  
-<!-- pdfmake for PDF export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-    <!-- Supabase (browser UMD) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="script.js"></script>
-    <link rel="manifest" href="./manifest.json">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>License Manager</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- pdfmake for PDF export (base) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+  <!-- Supabase -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Manifest -->
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#1a73e8">
 
-  </head>
-  <body>
-    <!-- Top bar -->
-    <header class="topbar">
-      <div class="topbar-inner">
-        <h1>License Manager</h1>
-        <div class="top-actions">
-          <button id="addBtn" class="btn btn-light">+ Add Record</button>
-          <button id="exportBtn" class="btn btn-success">Export Excel</button>
-          <button id="exportPdfBtn" class="btn btn-danger">Export PDF</button>
-        </div>
-      </div>
-    </header>
+  <style>
+    body, table, tr, td, th, input, select, button {
+      font-family: "Times New Roman", Times, serif !important;
+    }
+  </style>
+</head>
 
-    <!-- Card -->
-    <main class="container">
-      <section class="card">
-        <div class="card-header">
-          <h2>All Records</h2>
-          <div class="count"><span id="countText">0 records</span></div>
-        </div>
-
-        <div class="toolbar">
-          <input id="searchInput" class="input" placeholder="Search name / designation / license no / token no"/>
-          <select id="filterSelect">
-    <option value="all">All</option>
-    <option value="expired">Expired</option>
-    <option value="today">Expires Today</option>
-    <option value="soon">Expiring in 7 Days</option>
-    <option value="1month">Expiring in 1 Month</option>
-    <option value="2months">Expiring in 2 Months</option>
-    <option value="active">Active (More than 2 Months)</option>
-  </select>
-
-          <button id="searchBtn" class="btn btn-primary">Search</button>
-          <button id="clearBtn" class="btn btn-light">Clear</button>
-        </div>
-
-        <div class="table-wrap">
-          <table id="dataTable">
-            <thead>
-              <tr>
-                <th>Sl</th>
-                <th>Name</th>
-                <th>Designation</th>
-                <th>License No</th>
-                <th>Token No</th>
-                <th>Issue Date</th>
-                <th>Validity From</th>
-                <th>Validity To</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-          </table>
-          <div id="mobileView"></div>
-        </div>
-
-        <!-- Pagination -->
-        <div id="pagination" class="pagination"></div>
-      </section>
-    </main>
-
-    <!-- Toast -->
-    <div id="toast" class="toast" role="alert"></div>
-
-    <!-- Modal -->
-    <div id="modal" class="modal">
-      <div class="modal-content">
-        <h3 id="modalTitle">Add Record</h3>
-        <form id="form">
-          <input type="hidden" id="id"/>
-
-          <div class="grid">
-            <label>
-              <span>Name</span>
-              <input id="name" required />
-            </label>
-            <label>
-              <span>Designation</span>
-              <input id="designation" required />
-            </label>
-            <label>
-              <span>License No</span>
-              <input id="licenseNo" required />
-            </label>
-            <label>
-              <span>Token No</span>
-              <input id="tokenNo" required />
-            </label>
-            <label>
-              <span>Issue Date</span>
-              <input type="date" id="issueDate" required />
-            </label>
-            <label>
-              <span>Validity From</span>
-              <input type="date" id="validFrom" required />
-            </label>
-            <label>
-              <span>Validity To</span>
-              <input type="date" id="validTo" required />
-            </label>
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="btn" id="cancelBtn">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
-          </div>
-        </form>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1>License Manager</h1>
+      <div class="top-actions">
+        <button id="addBtn" class="btn btn-light">+ Add Record</button>
+        <button id="exportBtn" class="btn btn-success">Export Excel</button>
+        <button id="exportPdfBtn" class="btn btn-danger">Export PDF</button>
       </div>
     </div>
-    <button id="scrollTopBtn" class="scroll-top">⬆</button>
+  </header>
+
+  <!-- Card -->
+  <main class="container">
+    <section class="card">
+      <div class="card-header">
+        <h2>All Records</h2>
+        <div class="count"><span id="countText">0 records</span></div>
+      </div>
+
+      <!-- Existing Search Toolbar -->
+      <div class="toolbar">
+        <input id="searchInput" class="input" placeholder="Search name / designation / license no / token no"/>
+        <select id="filterSelect">
+          <option value="all">All</option>
+          <option value="expired">Expired</option>
+          <option value="today">Expires Today</option>
+          <option value="soon">Expiring in 7 Days</option>
+          <option value="1month">Expiring in 1 Month</option>
+          <option value="2months">Expiring in 2 Months</option>
+          <option value="active">Active (More than 2 Months)</option>
+        </select>
+        <button id="searchBtn" class="btn btn-primary">Search</button>
+        <button id="clearBtn" class="btn btn-light">Clear</button>
+      </div>
+
+      <!-- NEW Export Filters -->
+      <div class="toolbar" id="exportFilters" style="margin-top:8px;">
+        <select id="filterMonth">
+          <option value="all">All Months</option>
+          <option value="1">Jan</option>
+          <option value="2">Feb</option>
+          <option value="3">Mar</option>
+          <option value="4">Apr</option>
+          <option value="5">May</option>
+          <option value="6">Jun</option>
+          <option value="7">Jul</option>
+          <option value="8">Aug</option>
+          <option value="9">Sep</option>
+          <option value="10">Oct</option>
+          <option value="11">Nov</option>
+          <option value="12">Dec</option>
+        </select>
+
+        <select id="filterYear">
+          <option value="all">All Years</option>
+        </select>
+
+        <input type="number" id="rangeStart" placeholder="Start Year" style="width:120px;">
+        <input type="number" id="rangeEnd" placeholder="End Year" style="width:120px;">
+
+        <button id="applyRangeBtn" class="btn btn-primary">Apply Range</button>
+        <button id="resetFiltersBtn" class="btn btn-light">Reset Export Filters</button>
+      </div>
+
+      <!-- Normal Table Display -->
+      <div class="table-wrap">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>Sl</th>
+              <th>Name</th>
+              <th>Designation</th>
+              <th>License No</th>
+              <th>Token No</th>
+              <th>Issue Date</th>
+              <th>Validity From</th>
+              <th>Validity To</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="mobileView"></div>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination" class="pagination"></div>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="alert"></div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modalTitle">Add Record</h3>
+      <form id="form">
+        <input type="hidden" id="id"/>
+
+        <div class="grid">
+          <label><span>Name</span><input id="name" required /></label>
+          <label><span>Designation</span><input id="designation" required /></label>
+          <label><span>License No</span><input id="licenseNo" required /></label>
+          <label><span>Token No</span><input id="tokenNo" required /></label>
+          <label><span>Issue Date</span><input type="date" id="issueDate" required /></label>
+          <label><span>Validity From</span><input type="date" id="validFrom" required /></label>
+          <label><span>Validity To</span><input type="date" id="validTo" required /></label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <button id="scrollTopBtn" class="scroll-top">⬆</button>
+
+  <script defer src="./script.js"></script>
+
   <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./service-worker.js")
-      .then(reg => console.log("Service Worker registered:", reg))
-      .catch(err => console.error("Service Worker failed:", err));
-  }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js")
+        .then(reg => console.log("Service Worker registered:", reg))
+        .catch(err => console.error("Service Worker failed:", err));
+    }
   </script>
 
-
-
-  </body>
-  </html>
+</body>
+</html>
